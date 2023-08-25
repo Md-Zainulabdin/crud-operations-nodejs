@@ -1,4 +1,6 @@
 import express from "express"
+import { customAlphabet } from 'nanoid'
+const nanoid = customAlphabet('1234567890', 20)
 
 const app = express();
 const port = 5001;
@@ -9,7 +11,7 @@ app.get("/", (req, res) => {
 })
 
 let product = [{
-    id: 1,
+    id: nanoid(), // always a number
     name: "macebook",
     price: "$1300",
     desc: "macebook description"
@@ -52,8 +54,7 @@ app.get("/product/:id", (req, res) => {
 app.post("/product", (req, res) => {
 
     if (
-        !req.body.id
-        || req.body.name
+        req.body.name
         || req.body.price
         || req.body.desc
     ) {
@@ -61,7 +62,6 @@ app.post("/product", (req, res) => {
             message: `
             required parameter is missing! example JSON request body: 
             {
-                id: 1, // always number
                 name: "macebook",
                 price: "$1300",
                 desc: "macebook description"
@@ -70,7 +70,7 @@ app.post("/product", (req, res) => {
     }
 
     product.push({
-        id: req.body.id,
+        id: nanoid(), // generate id
         name: req.body.name,
         price: req.body.price,
         desc: req.body.desc,
@@ -128,9 +128,30 @@ app.put("/product/:id", (req, res) => {
 })
 
 app.delete("/product/:id", (req, res) => {
-    res.send("delete product")
-})
 
+    let isFound = false;
+    let deletedProduct = [];
+
+    for (let i = 0; i < product.length; i++) {
+        if (product[i].id === +req.params.id) {
+            isFound = i;
+            break;
+        }
+    }
+
+    if (isFound === false) {
+        res.status(404).send({
+            message: "Product not found",
+        })
+    } else {
+        deletedProduct.push({ delete_product: product[isFound] })
+        product.splice(isFound, 1);
+        res.status().send({
+            message: "product deleted",
+            product: deletedProduct,
+        })
+    }
+})
 
 app.listen(port, () => {
     console.log("server is started on port: " + port);
