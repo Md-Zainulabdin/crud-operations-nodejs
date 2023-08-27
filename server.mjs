@@ -1,9 +1,16 @@
 import express from "express"
-import { customAlphabet } from 'nanoid'
-const nanoid = customAlphabet('1234567890', 20)
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('1234567890', 20);
+import { MongoClient } from "mongodb";
+import './config/index.mjs'
 
 const app = express();
 const port = 5001;
+
+const mongodbURI = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.rvioaly.mongodb.net/?retryWrites=true&w=majority`;
+const client = new MongoClient(mongodbURI);
+const database = client.db("ecom");
+const productsCollection = database.collection("products");
 
 app.use(express.json());
 app.get("/", (req, res) => {
@@ -33,7 +40,7 @@ app.get("/product/:id", (req, res) => {
     let isFound = false;
 
     for (let i = 0; i < product.length; i++) {
-        if (product[i].id === +req.params.id) {
+        if (product[i].id == req.params.id) {
             isFound = i;
             break;
         }
@@ -51,12 +58,11 @@ app.get("/product/:id", (req, res) => {
     }
 })
 
-app.post("/product", (req, res) => {
-
+app.post("/products", async (req, res) => {
     if (
-        req.body.name
-        || req.body.price
-        || req.body.desc
+        !req.body.name
+        || !req.body.price
+        || !req.body.desc
     ) {
         res.status(403).send({
             message: `
@@ -69,12 +75,22 @@ app.post("/product", (req, res) => {
         })
     }
 
-    product.push({
+    // create a document to insert
+    const doc = {
         id: nanoid(), // generate id
         name: req.body.name,
         price: req.body.price,
         desc: req.body.desc,
-    })
+    }
+    const result = await productsCollection.insertOne(doc);
+
+
+    // product.push({
+    //     id: nanoid(), // generate id
+    //     name: req.body.name,
+    //     price: req.body.price,
+    //     desc: req.body.desc,
+    // })
 
     res.status(201).send({
         message: "created product",
@@ -83,9 +99,9 @@ app.post("/product", (req, res) => {
 
 app.put("/product/:id", (req, res) => {
     if (
-        req.body.name
-        || req.body.price
-        || req.body.desc
+        !req.body.name
+        && !req.body.price
+        && !req.body.desc
     ) {
         res.status(403).send({
             message: `
@@ -103,7 +119,7 @@ app.put("/product/:id", (req, res) => {
     let isFound = false;
 
     for (let i = 0; i < product.length; i++) {
-        if (product[i].id === req.params.id) {
+        if (product[i].id == req.params.id) {
             isFound = i;
             break;
         }
@@ -128,12 +144,11 @@ app.put("/product/:id", (req, res) => {
 })
 
 app.delete("/product/:id", (req, res) => {
-
+    console.log(req.method);
     let isFound = false;
-    let deletedProduct = [];
 
     for (let i = 0; i < product.length; i++) {
-        if (product[i].id === +req.params.id) {
+        if (product[i].id == req.params.id) {
             isFound = i;
             break;
         }
@@ -144,10 +159,9 @@ app.delete("/product/:id", (req, res) => {
             message: "Product not found",
         })
     } else {
-        deletedProduct.push({ delete_product: product[isFound] })
         product.splice(isFound, 1);
         res.status().send({
-            message: "product deleted",
+            message: "product is deleted",
             product: deletedProduct,
         })
     }
